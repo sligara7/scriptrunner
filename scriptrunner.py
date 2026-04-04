@@ -281,6 +281,8 @@ class EditorPanel(ttk.Frame):
         self.text_area.bind("<MouseWheel>", lambda e: self.after_idle(
             self._update_line_numbers))
         self.text_area.bind("<Control-s>", self.save_file)
+        self.text_area.bind("<Tab>", self._insert_spaces)
+        self.text_area.bind("<Shift-Tab>", self._remove_indent)
         # Syntax Highlighting
         if ColorDelegator and Percolator:
             self.percolator = Percolator(self.text_area)
@@ -302,12 +304,28 @@ class EditorPanel(ttk.Frame):
         self.line_numbers.config(state='disabled')
         self.line_numbers.yview_moveto(self.text_area.yview()[0])
 
+    def _insert_spaces(self, event):
+        """Replace Tab key with 4 spaces"""
+        self.text_area.insert("insert", " " * 4)
+        return "break"
+
+    def _remove_indent(self, event):
+        """Handle Shift+Tab to remove 4 spaces"""
+        line_start = self.text_area.index("insert linestart")
+        line_end = self.text_area.index("insert lineend")
+        line = self.text_area.get(line_start, line_end)
+
+        if line.startswith(" " * 4):
+            self.text_area.delete(line_start, f"{line_start}+4c")
+
+        return "break"
+
     def load_content(self):
         self.text_area.config(state=tk.NORMAL)
         self.text_area.delete('1.0', tk.END)
         try:
             with open(self.file_path, 'r') as f:
-                content = f.read()
+                content = f.read().replace("\t", " " * 4)
             self.text_area.insert('1.0', content)
         except Exception as e:
             self.text_area.insert('1.0', f"# Error: {e}")
