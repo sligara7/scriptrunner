@@ -39,6 +39,19 @@ TYPE_MAP = {
     "bool": bool,
 }
 
+# Arguments that identify a Bluesky run get a "Pick run..." button, which
+# fills them from a run chosen in a Tiled catalog. Value: the run field used.
+RUN_ARGUMENT_FIELDS = {
+    "uid": "uid",
+    "run_uid": "uid",
+    "scan_uid": "uid",
+    "run": "uid",
+    "scan_id": "scan_id",
+}
+TILED_URI_DEFAULT = "https://tiled.nsls2.bnl.gov"
+TILED_RUNS_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "tiled_runs.py")
+
 
 # ==============================================================================
 #                          Utility Functions
@@ -147,6 +160,57 @@ def save_config(data):
     os.makedirs(os.path.dirname(config_path), exist_ok=True)
     with open(config_path, "w") as f:
         json.dump(data, f)
+
+
+def update_config(**values):
+    """
+    Merge values into the saved config, keeping keys already there.
+    """
+    data = load_config() or {}
+    data.update(values)
+    save_config(data)
+
+
+def run_argument_field(clean_name):
+    """
+    Return the run field ('uid' or 'scan_id') an argument takes, or None if
+    the argument does not identify a run.
+    """
+    return RUN_ARGUMENT_FIELDS.get(clean_name.lower().replace("-", "_"))
+
+
+def build_run_search_command(interpreter, uri, catalog, since, until,
+                             plan_name="", data_session="", limit=200):
+    """
+    Command that searches a Tiled catalog with the given interpreter.
+    """
+    command = [interpreter, TILED_RUNS_SCRIPT, "--uri", uri,
+               "--catalog", catalog, "--since", since, "--until", until,
+               "--limit", str(limit)]
+    if plan_name:
+        command += ["--plan-name", plan_name]
+    if data_session:
+        command += ["--data-session", data_session]
+    return command
+
+
+def parse_run_search_output(stdout):
+    """
+    Read the JSON printed by tiled_runs.py.
+
+    Returns:
+        (runs, error) - a list of run dicts and None, or [] and a message.
+    """
+    lines = [line for line in stdout.strip().splitlines() if line.strip()]
+    if not lines:
+        return [], "The run search printed nothing."
+    try:
+        result = json.loads(lines[-1])
+    except ValueError:
+        return [], f"Unexpected output from the run search:\n{stdout.strip()}"
+    if "error" in result:
+        return [], result["error"]
+    return result.get("runs", []), None
 
 
 def get_config_path():

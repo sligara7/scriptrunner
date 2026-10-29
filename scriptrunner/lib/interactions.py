@@ -9,6 +9,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import scriptrunner.lib.utilities as util
 from scriptrunner.lib.rendering import ScriptRunnerRendering, CodeEditorWindow
+from scriptrunner.lib.run_picker import RunPickerWindow
 
 
 # ==============================================================================
@@ -100,8 +101,7 @@ class ScriptRunnerInteractions(ScriptRunnerRendering):
             for widget in self.scrollable_frame.winfo_children():
                 widget.destroy()
             self.populate_script_list()
-            config_data = {"last_folder": folder}
-            util.save_config(config_data)
+            util.update_config(last_folder=folder)
 
     def browse_interpreter(self):
         filename = filedialog.askopenfilename(title="Select Python Interpreter",
@@ -189,12 +189,25 @@ class ScriptRunnerInteractions(ScriptRunnerRendering):
                 elif default_value is not None:
                     entry.insert(0, str(default_value))
 
-                ttk.Label(self.scrollable_frame, text=help_text, justify="left",
-                          foreground="#555",
-                          font=(util.FONT_FAMILY,
-                                util.PARA_FONT_SIZE)).grid(row=row, column=3,
-                                                           sticky="w", padx=5,
-                                                           pady=2)
+                help_parent = self.scrollable_frame
+                run_field = util.run_argument_field(clean_name)
+                if run_field:
+                    help_parent = ttk.Frame(self.scrollable_frame)
+                    help_parent.grid(row=row, column=3, sticky="w")
+                    ttk.Button(help_parent, text="Pick run...",
+                               style="Small.TButton",
+                               command=lambda e=entry, f=run_field,
+                               s=script_name: self.pick_run(s, e, f)).pack(
+                        side=tk.LEFT, padx=(5, 0))
+                help_label = ttk.Label(help_parent, text=help_text,
+                                       justify="left", foreground="#555",
+                                       font=(util.FONT_FAMILY,
+                                             util.PARA_FONT_SIZE))
+                if run_field:
+                    help_label.pack(side=tk.LEFT, padx=5)
+                else:
+                    help_label.grid(row=row, column=3, sticky="w", padx=5,
+                                    pady=2)
                 # Use clean_name as the key in dictionaries
                 self.entries[clean_name] = (entry, arg_type)
                 row += 1
@@ -228,6 +241,23 @@ class ScriptRunnerInteractions(ScriptRunnerRendering):
         self.entry_sched_index.pack(side=tk.LEFT, padx=0)
         ttk.Button(frame_add, text="Add to schedule", width=15,
                    command=self.schedule_script).pack(side=tk.LEFT, padx=(5, 0))
+
+    def pick_run(self, script_name, entry, run_field):
+        script_full_path = os.path.join(self.current_folder.get(), script_name)
+        interpreter, _ = self.resolve_interpreter(script_full_path)
+
+        def fill(run):
+            value = run.get(run_field)
+            if value is None:
+                messagebox.showwarning(
+                    "Run has no value",
+                    f"The selected run has no {run_field}.", parent=self)
+                return
+            entry.delete(0, tk.END)
+            entry.insert(0, str(value))
+
+        RunPickerWindow(self, interpreter, fill,
+                        title=f"Pick a run for {script_name}")
 
     def save_current_inputs(self):
         if not self.current_script:

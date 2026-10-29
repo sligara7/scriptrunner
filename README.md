@@ -51,6 +51,14 @@ Features
 
     ![Fig3](https://github.com/algotom/scriptrunner/raw/main/figs/fig4.png)
 
+- **_Pick a Bluesky run from a Tiled catalog (optional)_**:
+
+    An argument that names a run (`--uid`, `--run_uid`, `--scan_uid`, `--run` or `--scan_id`) gets a "Pick run..." button.
+    It opens a run browser that searches a [Tiled](https://blueskyproject.io/tiled/) catalog by date, plan name and proposal
+    (`data_session`). Choosing a run fills in its uid or scan id. The search runs with the script's own interpreter, so
+    `tiled` only needs to be installed in the environment the script uses, not in ScriptRunner's. The script then reads
+    the run from Tiled itself.
+
 
 Installation
 ============
@@ -111,6 +119,10 @@ Usage
 - Select a script and use "Add to schedule" to schedule multiple scripts. There is an option to add sleep time between scripts.
 
 - Enable/disable saving console output to a file using the checkbox.
+
+- For a run argument (e.g. `--uid`), click "Pick run...", set the Tiled URI and catalog path (e.g. `hex/raw`), then
+  search and double-click a run. The URI, catalog, plan name and proposal are remembered for next time. If the server
+  needs a login, log in once from a terminal with the script's interpreter, so a token is cached.
 
 - By default, ScriptRunner picks and displays ArgParse-based scripts. However, users can choose to display all Python scripts by running:
   ```commandline
